@@ -71,25 +71,53 @@ namespace TestingUI
                 _updateExpression(_expression);
                 return;
             }
+            string[] parts = _expression.Split(new char[] { '+', '-', '*', '/', '^', '(', ')' }, StringSplitOptions.None);
+            string lastNum = parts.Length > 0 ? parts.Last() : "";
+           
+            if (input == ".")
+            {
+                if (string.IsNullOrEmpty(lastNum) || lastNum.Contains("."))
+                {
+                    return; 
+                }
+            }
+
+            if (input == "0")
+            {
+                if (lastNum == "0")
+                {
+                    return; 
+                }
+            }
+
+            if (input == "00")
+            {
+                if (string.IsNullOrEmpty(lastNum) || lastNum == "0")
+                {
+                    return; 
+                }
+            }
             if (char.IsDigit(input[0]))
             {
-                if (_expression.Length == 0 && input == "00")
-                {
-                    return;
-                }
                 
-                string[] parts = _expression.Split(new char[] { '+', '-', '*', '/', '^', '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length > 0)
                 {
                     string lastNumber = parts.Last();
-                    if (lastNumber == "0" && input != "." && input != "0")
+
+                    if (lastNumber.StartsWith("0") && !lastNumber.Contains(".") && lastNumber.Length >= 1)
                     {
-                        return;
-                    }
-                
-                    if (lastNumber.StartsWith("0") && !lastNumber.Contains(".") && input == "0")
-                    {
-                        return;
+                        if (input != ".")
+                        {
+                            if (_expression.Length > 0)
+                            {
+                                char lastChar = _expression.Last();
+                                if (!"+-*/^(".Contains(lastChar))
+                                {
+                                    return;
+                                }
+                            }
+                            else return;
+                        }
                     }
                 }
             }
@@ -299,6 +327,7 @@ namespace TestingUI
                 undoStack.Push(new InputCommand(this, actualInput.Length));
                 redoStack.Clear();
             }
+
         }
 
         public void RemoveLastInput(int length)
