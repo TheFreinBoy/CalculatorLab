@@ -203,6 +203,10 @@ namespace TestingUI
                     {
                         operators.Push("√");
                     }
+                    else if (c == '-' && (i == 0 || infix[i - 1] == '(' || "+-*/^".Contains(infix[i - 1])))
+                    {
+                        number.Append(c);
+                    }
                     else if (IsOperator(c.ToString()))
                     {
                         while (operators.Count > 0 && Priority(operators.Peek()) >= Priority(c.ToString()))
