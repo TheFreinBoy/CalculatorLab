@@ -17,6 +17,7 @@ namespace TestingUI
     {
         private string _expression = "";
         private string _lastEntry = "";
+        private string _currentDisplay = "";
         private readonly Action<string> _updateDisplay;
         private readonly Action<string> _updateExpression;
         private Stack<ICalculatorCommand> undoStack = new Stack<ICalculatorCommand>();
@@ -51,13 +52,75 @@ namespace TestingUI
                 _updateExpression(_expression);
                 return;
             }
+            if (input == ")")
+            {
+                int openCount = _expression.Count(c => c == '(');
+                int closeCount = _expression.Count(c => c == ')');
+
+                if (openCount > closeCount)
+                {
+                    if (_expression.EndsWith("("))
+                    {
+                        _expression += "0)";
+                    }
+                    else
+                    {
+                        _expression += ")";
+                    }
+                    _updateExpression(_expression);
+                }
+                return;
+            }
+
+            if (input == "(")
+            {
+                if (_expression.Length > 0)
+                {
+                    char lastChar = _expression.Last();
+                    if (char.IsDigit(lastChar) || lastChar == ')' || lastChar == 'π' || lastChar == 'e')
+                    {                       
+                        _expression += "*(";
+                    }
+                    else
+                    {
+                        _expression += "(";
+                    }
+                }
+                else
+                {
+                    _expression += "(";
+                }
+
+                _updateExpression(_expression);
+                return;
+            }
             if (input == "=")
             {
                 try
                 {
+                    string previousExpression = _expression;
+                    string previousDisplay = ""; 
+
+                    int openCount = _expression.Count(c => c == '(');
+                    int closeCount = _expression.Count(c => c == ')');
+                    while (openCount > closeCount)
+                    {
+                        if (_expression.Length > 0 && "+-*/^(".Contains(_expression.Last()))
+                        {
+                            _expression += "0";
+                        }
+                        _expression += ")";
+                        closeCount++;
+                    }
+
                     double result = EvaluateExpression(_expression);
-                    _updateDisplay(result.ToString(CultureInfo.InvariantCulture));
-                    _expression = result.ToString(CultureInfo.InvariantCulture);
+                    string resultStr = result.ToString(CultureInfo.InvariantCulture);
+                    _updateDisplay(resultStr);
+
+                    _expression = resultStr;
+
+                    undoStack.Push(new EvaluateCommand(this, previousExpression, previousDisplay));
+                    redoStack.Clear();
                 }
                 catch (Exception)
                 {
@@ -65,6 +128,7 @@ namespace TestingUI
                 }
                 return;
             }
+
             if (input == "%")
             {
                 _expression += "%";
@@ -323,45 +387,52 @@ namespace TestingUI
         }
         public void AppendToExpression(string displayInput, string actualInput, bool record = true)
         {
-            Console.WriteLine($"[Append] Додаю в undoStack: '{actualInput}'");
+            Console.WriteLine($"[Append] Додав в undoStack: '{actualInput}'");
+            string previous = _expression;
+            string previousDisplay = _currentDisplay;
+
             _expression += actualInput;
             _updateExpression(_expression);
+
             if (record)
             {
-                undoStack.Push(new InputCommand(this, actualInput.Length));
+                undoStack.Push(new EvaluateCommand(this, previous, previousDisplay));
                 redoStack.Clear();
             }
-
         }
 
-        public void RemoveLastInput(int length)
+        public void SetExpression(string expression)
         {
-            if (_expression.Length >= length)
-            {
-                _expression = _expression.Substring(0, _expression.Length - length);
-                _updateExpression(_expression);
-            }
+            _expression = expression;
+            _updateExpression(_expression);
+        }
+        public void SetDisplay(string display)
+        {
+            _currentDisplay = display;
+            _updateDisplay(display);
         }
     }
-    public class InputCommand : ICalculatorCommand
+    public class EvaluateCommand : ICalculatorCommand
     {
-        private Calculator _calculator;
-        private int _length;
+        private readonly Calculator _calculator;
+        private readonly string _prevExpression;
+        private readonly string _prevDisplay;
 
-        public InputCommand(Calculator calculator, int length)
+        public EvaluateCommand(Calculator calculator, string prevExpression, string prevDisplay)
         {
             _calculator = calculator;
-            _length = length;
+            _prevExpression = prevExpression;
+            _prevDisplay = prevDisplay;
         }
 
-        public void Execute()
-        {
-            
-        }
+        public void Execute() { }
 
         public void Unexecute()
         {
-            _calculator.RemoveLastInput(_length);
+            _calculator.SetExpression(_prevExpression);
+            _calculator.SetDisplay(_prevDisplay);
         }
     }
+
+
 }
